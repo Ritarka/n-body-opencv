@@ -13,11 +13,14 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 
-#define WORLD_MAX_X 600
-#define WORLD_MAX_Y 400
+#define WORLD_MAX_X 1200
+#define WORLD_MAX_Y 800
 
 #define SOFTENING 2
-#define NUM_PARTICLES 1000
+#define NUM_PARTICLES 2000
+
+#define DT 0.1
+
 
 using namespace std;
 using namespace cv;
@@ -30,9 +33,9 @@ typedef struct {
 
 void randomlyAllocate(Body *data, int n) {
     for (int i = 0; i < n; i++) {
-        data[i].x = (rand() %  100);
-        data[i].y = (rand() %  100);
-        data[i].mass = (rand() % 3) + 1;
+        data[i].x = rand() % 100;
+        data[i].y = rand() % 100;
+        data[i].mass = rand() % 3 + 1;
         data[i].color = Scalar(rand() % 255, rand() % 255, rand() % 255);
     }
 }
@@ -43,7 +46,7 @@ void calcForce(Body *p, float dt, int numBodies) {
         double fx = 0.0f;
         double fy = 0.0f;
 
-        for (int j = 0; j < numBodies; j++){
+        for (int j = 0; j < numBodies; j++) {
             double dx = p[j].x - p[i].x;
             double dy = p[j].y - p[i].y;
             double sqdist = dx*dx + dy*dy + SOFTENING;
@@ -68,8 +71,7 @@ int main() {
     int nBodies = NUM_PARTICLES;
     double dt = 0.1;
 
-    int bytes = nBodies*sizeof(Body);
-    double *buf = (double*)malloc(bytes);
+    double *buf = (double*)malloc(nBodies * sizeof(Body));
     Body *p = (Body*)buf;
 
     randomlyAllocate(p, nBodies);
@@ -116,15 +118,16 @@ int main() {
                 else if (c == 'q')
                     return 0;
                 else if (c == 's') {
-                    //imwrite("screenshot.png", disp);
+                    string name = "Epoch_" + to_string(iter) + ".png";
+                    imwrite(name, disp);
                 } else if (c == 'n') {
                     step = 1;
                     break;
-                } else if (c == 'b') {
+                } /*else if (c == 'b') {
                     prev = 1;
                     step = 1;
                     break;
-                }
+                }*/
             }
         }
 
