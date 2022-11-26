@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <string>
 #include <ncurses.h>
-#include <random>
+#include <fstream>
 
 #include <omp.h>
 
@@ -14,6 +14,7 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 
+// #include <bits/stdc++.h>
 #define WORLD_MAX_X 1200
 #define WORLD_MAX_Y 800
 
@@ -63,8 +64,8 @@ void calcForce(Body *p, float dt, int numBodies) {
         double fy = 0.0f;
 
         for (int j = 0; j < numBodies; j++) {
-            double dx = (p[j].x - p[i].x) / 100;
-            double dy = (p[j].y - p[i].y) / 100;
+            double dx = p[j].x - p[i].x;
+            double dy = p[j].y - p[i].y;
             double sqdist = dx*dx + dy*dy + SOFTENING;
             double InvDist = 1.0f / sqrtf(sqdist);
             double InvDist3 = InvDist * InvDist * InvDist;
@@ -97,7 +98,7 @@ int main() {
     int stats = 1; 
 
     for (int iter = 0; ; iter++) {
-        if (pauses <=1) {
+        if (pauses <= 1) {
             disp = Scalar(0, 0, 0);
         }
 
@@ -144,7 +145,6 @@ int main() {
                     continue;
                 }
             }
-
             while (1) {
                 c = (char)waitKey(0);
                 if (c == 'p')
@@ -160,9 +160,77 @@ int main() {
                 } else if (c == 'd') {
                     stats = !stats;
                 }
+                else if (c == 'e') {
+                    ofstream outFile;
+                    string filename = "n-body.txt";
+                    outFile.open(filename, ofstream::out | ofstream::trunc);
+//                    if (!outFile.is_open())
+//                    {
+//                        cout << "n-body.txt not found.";
+//                    }
+                    if (outFile.is_open())
+                    {
+                        
+                        for (int i = 0; i < nBodies; i++)
+                        {
+                            outFile << p[i].x << " ";
+                            outFile << p[i].y << " ";
+                            outFile << p[i].mass << " ";
+                            outFile << p[i].vx << " ";
+                            outFile << p[i].vy << " ";
+                            outFile << p[i].color[0] << " ";
+                            outFile << p[i].color[1] << " ";
+                            outFile << p[i].color[2] << " ";
+                            outFile << "\n";
+                        }
+                        
+                        outFile.close();
+                    }
+                    else
+                    {
+                        cout << "n-body.txt not found." << endl;
+                    }
+                }
+                else  if (c == 'i') {
+                    ifstream inFile;
+                    string infilename = "n-body-input.txt";
+                    inFile.open(infilename);
+                    
+                    if (inFile.is_open())
+                    {
+                        string bodyline;
+                        int bodynum = 0;
+                        while (getline(inFile, bodyline))
+                        {
+                            vector<string> values;
+                            std::string::size_type beg = 0, end;
+                            do {
+                                end = bodyline.find(' ', beg);
+                                if (end == std::string::npos) {
+                                    end = bodyline.size();
+                                }
+                                values.emplace_back(bodyline.substr(beg, end - beg));
+                                beg = end + 1;
+                            } while (beg < bodyline.size());
+                            
+                            p[bodynum].x = stod(values[0]);
+                            p[bodynum].y = stod(values[1]);
+                            p[bodynum].mass = stod(values[2]);
+                            p[bodynum].vx = stod(values[3]);
+                            p[bodynum].vy = stod(values[4]);
+                            p[bodynum].color = Scalar(stod(values[5]), stod(values[6]), stod(values[7]));
+                            bodynum++;
+                        }
+                    }
+                    else
+                    {
+                        cout << "n-body-input.txt not found." << endl;
+                    }
+                }
             }
         } else if (c == 'd') {
             stats = !stats;
         }
+
     }
 }
