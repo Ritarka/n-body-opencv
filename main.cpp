@@ -14,6 +14,7 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 
+// #include <bits/stdc++.h>
 #define WORLD_MAX_X 1200
 #define WORLD_MAX_Y 800
 
@@ -128,12 +129,13 @@ int main() {
                     ofstream outFile;
                     string filename = "n-body.txt";
                     outFile.open(filename, ofstream::out | ofstream::trunc);
-                    cout << "e was pressed \n";
-                    if (!outFile.is_open())
+//                    if (!outFile.is_open())
+//                    {
+//                        cout << "n-body.txt not found.";
+//                    }
+                    if (outFile.is_open())
                     {
-                        cout << "n-body.txt not found.";
-                    }
-
+                        
                         for (int i = 0; i < nBodies; i++)
                         {
                             outFile << p[i].x << " ";
@@ -146,8 +148,49 @@ int main() {
                             outFile << p[i].color[2] << " ";
                             outFile << "\n";
                         }
-
-                    outFile.close();
+                        
+                        outFile.close();
+                    }
+                    else
+                    {
+                        cout << "n-body.txt not found." << endl;
+                    }
+                }
+                else  if (c == 'i'){
+                    ifstream inFile;
+                    string infilename = "n-body-input.txt";
+                    inFile.open(infilename);
+                    
+                    if (inFile.is_open())
+                    {
+                        string bodyline;
+                        int bodynum = 0;
+                        while (getline(inFile, bodyline))
+                        {
+                            vector<string> values;
+                            std::string::size_type beg = 0, end;
+                            do {
+                                end = bodyline.find(' ', beg);
+                                if (end == std::string::npos) {
+                                    end = bodyline.size();
+                                }
+                                values.emplace_back(bodyline.substr(beg, end - beg));
+                                beg = end + 1;
+                            } while (beg < bodyline.size());
+                            
+                            p[bodynum].x = stod(values[0]);
+                            p[bodynum].y = stod(values[1]);
+                            p[bodynum].mass = stod(values[2]);
+                            p[bodynum].vx = stod(values[3]);
+                            p[bodynum].vy = stod(values[4]);
+                            p[bodynum].color = Scalar(stod(values[5]), stod(values[6]), stod(values[7]));
+                            bodynum++;
+                        }
+                    }
+                    else
+                    {
+                        cout << "n-body-input.txt not found." << endl;
+                    }
                 }/*else if (c == 'b') {
                     prev = 1;
                     step = 1;
