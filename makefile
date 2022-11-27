@@ -6,3 +6,4 @@ build:  main.cpp
 clean: 
 	rm -f n_body_opencv
 	rm -f *.png
+	rm -f *.txt
