@@ -14,7 +14,6 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 
-// #include <bits/stdc++.h>
 #define WORLD_MAX_X 1200
 #define WORLD_MAX_Y 800
 
@@ -84,15 +83,7 @@ int main() {
 
     for (int iter = 0; ; iter++) {
         disp = Scalar(0, 0, 0);
-        dt = abs(dt);
-        if (prev) {
-            dt *= -1;
-            iter -= 2;
-            if (iter < 0) {
-                iter = 0;
-                goto input;
-            }
-        }
+
         calcForce(p, dt, nBodies);
 
         #pragma omp parallel for schedule(dynamic)
@@ -129,10 +120,7 @@ int main() {
                     ofstream outFile;
                     string filename = "n-body.txt";
                     outFile.open(filename, ofstream::out | ofstream::trunc);
-//                    if (!outFile.is_open())
-//                    {
-//                        cout << "n-body.txt not found.";
-//                    }
+
                     if (outFile.is_open())
                     {
                         
@@ -191,11 +179,7 @@ int main() {
                     {
                         cout << "n-body-input.txt not found." << endl;
                     }
-                }/*else if (c == 'b') {
-                    prev = 1;
-                    step = 1;
-                    break;
-                }*/
+                }
             }
         }
 
