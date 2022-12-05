@@ -25,10 +25,10 @@
 #define DT 0.1
 
 //Can be changed by user
-#define NUM_STEPS 1    //Number of calculations made per epoch
+#define NUM_STEPS 5    //Number of calculations made per epoch
 #define EPOCH_STEP 5   //Number of epochs skipped when fast-forwarding
-#define INTEREST 1     //Body index of interest
-#define DRAW_PATH 1    //Draw path of interest body
+#define INTEREST 3     //Body index of interest
+#define DRAW_PATH 0    //Draw path of interest body
 #define READ_FILE 1    //0 - Generate random initial conditions, 1 - Read initial conditions from file
 
 
@@ -63,7 +63,7 @@ void randomlyAllocate(Body *data, int n) {
 
 void readInput(Body* p) {
     std::ifstream inFile;
-    std::string infilename = "n-body.txt";
+    std::string infilename = "n-body.csv";
     inFile.open(infilename);
     
     if (inFile.is_open())
@@ -91,10 +91,6 @@ void readInput(Body* p) {
             p[bodynum].color = Scalar(stod(values[5]), stod(values[6]), stod(values[7]));
             bodynum++;
         }
-    }
-    else
-    {
-        std::cout << "n-body.txt not found." << std::endl;
     }
 }
 
@@ -208,7 +204,7 @@ int main() {
                     stats = !stats;
                 } else if (c == 'e') {
                     ofstream outFile;
-                    std::string filename = "n-body.txt";
+                    std::string filename = "n-body.csv";
                     outFile.open(filename, ofstream::out | ofstream::trunc);
 
                     if (outFile.is_open())
@@ -228,10 +224,6 @@ int main() {
                         }
                         
                         outFile.close();
-                    }
-                    else
-                    {
-                        std::cout << "n-body.txt not found." << std::endl;
                     }
                 }
             }
