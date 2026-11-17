@@ -2,3 +2,7 @@
 100: 15.468620000
 Fast invserse squareroot: 12.602437000
 minimize divisions: 10.220500000
+
+
+6x more bodies
+13 seconds vs 29 seconds baseline
