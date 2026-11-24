@@ -9,3 +9,4 @@ r0*/
 perf*
 cachegrind*
 loose_results.txt
+main_copy.cpp

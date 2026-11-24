@@ -1,6 +1,8 @@
 ## Intro
 This was a project I originally worked on during my 2nd year of college.
 
+![Demo animation](nbody_simulation.gif)
+
 I always felt this was too slow. I got tired of my python heavy job and wanted to scratch the itch of doing some performance engineering again. 
 
 Compared to my previous implementation of of this 2D n-body, this new implementation works 3-4x faster and can simulate more celestial bodies! If I recall correctly, my old laptop would crash after just 1024 bodies, but I am able to simulate more than 10x that. I haven't bothered testing the new upper bound.
