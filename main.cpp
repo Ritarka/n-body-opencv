@@ -38,9 +38,17 @@ static_assert(NUM_PARTICLES % 8 == 0);
 using namespace std;
 using namespace cv;
 
-vector<double> body_x;
-vector<double> body_y;
-vector<double> masses;
+// vector<double> body_x;
+// vector<double> body_y;
+// vector<double> masses;
+// vector<double> inv_masses;
+
+
+double* body_x;
+double* body_y;
+double* masses;
+double* inv_masses;
+
 
 class Body {
 public:
@@ -59,12 +67,13 @@ void randomlyAllocate(Body *data, int n) {
     std::default_random_engine re;
     
     for (int i = 0; i < n; i++) {
-        body_x.push_back(unifx(re));
-        body_y.push_back(unify(re));
+        body_x[i] = unifx(re);
+        body_y[i] = unify(re);
 
         // data[i].path.push_back(make_pair(data[i].x, data[i].y));
 
-        masses.push_back(rand() % 4 + 1);
+        masses[i] = rand() % 4 + 1;
+        inv_masses[i] = 1/ masses[i];
         data[i].color = Scalar(rand() % 255, rand() % 255, rand() % 255);
     }
 }
@@ -103,7 +112,7 @@ void randomlyAllocate(Body *data, int n) {
 // }
 
 
-#define DISPLAY 1
+#define DISPLAY 0
 
 void calcForce2(Body *p, float dt, int numBodies) {
 #pragma omp parallel for num_threads(2)
@@ -153,68 +162,116 @@ double horizontal_sum_m256d(__m256d v) {
 
 void calcForce(Body *p, float dt, int numBodies) {
     asm volatile("# === BEGIN CRITICAL LOOP ===");
+    __m256d softening = _mm256_set1_pd(SOFTENING);
+    __m256d scale = _mm256_set1_pd(0.01);
     
     #pragma omp parallel for num_threads(2)
     for (int i = 0; i < numBodies; i++) {
 
-        double invm = 1.0 / masses[i];
-
         // Broadcast values belonging to body i
         __m256d xi = _mm256_set1_pd(body_x[i]);
         __m256d yi = _mm256_set1_pd(body_y[i]);
-        __m256d invm_v = _mm256_set1_pd(invm);
-        __m256d softening = _mm256_set1_pd(SOFTENING);
-        __m256d scale = _mm256_set1_pd(0.01);
+        __m256d invm_v = _mm256_set1_pd(inv_masses[i]);
 
         // Vector accumulators
         __m256d fx_v = _mm256_setzero_pd();
         __m256d fy_v = _mm256_setzero_pd();
 
+        __m256d fx_v2 = _mm256_setzero_pd();
+        __m256d fy_v2 = _mm256_setzero_pd();
+
+
         int j = 0;
 
         // Process 8 bodies per iteration
-        for (; j < numBodies; j += 4) {
+        for (; j < numBodies; j += 8) {
             asm volatile("# === BEGIN INNER LOOP ===");
 
-            // Load 8 positions
-            __m256d xj = _mm256_loadu_pd(&body_x[j]);
-            __m256d yj = _mm256_loadu_pd(&body_y[j]);
-            __m256d mj = _mm256_loadu_pd(&masses[j]);
+            {
+                // Load 4 positions
+                __m256d xj = _mm256_load_pd(&body_x[j]);
+                __m256d yj = _mm256_load_pd(&body_y[j]);
+                __m256d mj = _mm256_load_pd(&masses[j]);
 
-            // Calculate displacement
-            __m256d dx = _mm256_sub_pd(xj, xi);
-            __m256d dy = _mm256_sub_pd(yj, yi);
+                // Calculate displacement
+                __m256d dx = _mm256_sub_pd(xj, xi);
+                __m256d dy = _mm256_sub_pd(yj, yi);
 
-            dx = _mm256_mul_pd(dx, scale);
-            dy = _mm256_mul_pd(dy, scale);
+                dx = _mm256_mul_pd(dx, scale);
+                dy = _mm256_mul_pd(dy, scale);
 
-            // Calculate squared distance
-            __m256d dx2 = _mm256_mul_pd(dx, dx);
-            __m256d dy2 = _mm256_mul_pd(dy, dy);
+                // Calculate squared distance
+                __m256d dx2 = _mm256_mul_pd(dx, dx);
+                __m256d dy2 = _mm256_mul_pd(dy, dy);
 
-            __m256d sqdist = _mm256_add_pd(dx2, dy2);
-            sqdist = _mm256_add_pd(sqdist, softening);
+                __m256d sqdist = _mm256_add_pd(dx2, dy2);
+                sqdist = _mm256_add_pd(sqdist, softening);
 
-            // Approximate reciprocal square root
-            __m256d invDist = _mm256_rsqrt14_pd(sqdist);
+                // Approximate reciprocal square root
+                __m256d invDist = _mm256_rsqrt14_pd(sqdist);
 
-            // Calculate inverse distance cubed
-            __m256d invDist2 = _mm256_mul_pd(invDist, invDist);
-            __m256d invDist3 = _mm256_mul_pd(invDist2, invDist);
+                // Calculate inverse distance cubed
+                __m256d invDist2 = _mm256_mul_pd(invDist, invDist);
+                __m256d invDist3 = _mm256_mul_pd(invDist2, invDist);
 
-            // Calculate force contributions
-            __m256d factor = _mm256_mul_pd(invDist3, mj);
-            factor = _mm256_mul_pd(factor, invm_v);
+                // Calculate force contributions
+                __m256d factor = _mm256_mul_pd(invDist3, mj);
+                factor = _mm256_mul_pd(factor, invm_v);
 
-            fx_v = _mm256_fmadd_pd(dx, factor, fx_v);
-            fy_v = _mm256_fmadd_pd(dy, factor, fy_v);
+                fx_v = _mm256_fmadd_pd(dx, factor, fx_v);
+                fy_v = _mm256_fmadd_pd(dy, factor, fy_v);
+            }
+
+            {
+                // Load 4 positions
+                __m256d xj = _mm256_load_pd(&body_x[j+4]);
+                __m256d yj = _mm256_load_pd(&body_y[j+4]);
+                __m256d mj = _mm256_load_pd(&masses[j+4]);
+
+                // Calculate displacement
+                __m256d dx = _mm256_sub_pd(xj, xi);
+                __m256d dy = _mm256_sub_pd(yj, yi);
+
+                dx = _mm256_mul_pd(dx, scale);
+                dy = _mm256_mul_pd(dy, scale);
+
+                // Calculate squared distance
+                __m256d dx2 = _mm256_mul_pd(dx, dx);
+                __m256d dy2 = _mm256_mul_pd(dy, dy);
+
+                __m256d sqdist = _mm256_add_pd(dx2, dy2);
+                sqdist = _mm256_add_pd(sqdist, softening);
+
+                // Approximate reciprocal square root
+                __m256d invDist = _mm256_rsqrt14_pd(sqdist);
+
+                // Calculate inverse distance cubed
+                __m256d invDist2 = _mm256_mul_pd(invDist, invDist);
+                __m256d invDist3 = _mm256_mul_pd(invDist2, invDist);
+
+                // Calculate force contributions
+                __m256d factor = _mm256_mul_pd(invDist3, mj);
+                factor = _mm256_mul_pd(factor, invm_v);
+
+                fx_v2 = _mm256_fmadd_pd(dx, factor, fx_v2);
+                fy_v2 = _mm256_fmadd_pd(dy, factor, fy_v2);
+            }
+
+
+
 
             asm volatile("# === END INNER LOOP ===");
         }
 
         // Horizontal reduction
-        double fx = horizontal_sum_m256d(fx_v);
-        double fy = horizontal_sum_m256d(fy_v);
+        double fx1 = horizontal_sum_m256d(fx_v);
+        double fy1 = horizontal_sum_m256d(fy_v);
+
+        double fx2 = horizontal_sum_m256d(fx_v2);
+        double fy2 = horizontal_sum_m256d(fy_v2);
+
+        double fx = fx1 + fx2;
+        double fy = fy1 + fy2;
 
         asm volatile("# === END CRITICAL LOOP ===");
 
@@ -224,6 +281,8 @@ void calcForce(Body *p, float dt, int numBodies) {
         p[i].ax = fx;
         p[i].ay = fy;
     }
+
+    
 }
 
 
@@ -237,6 +296,18 @@ int main() {
 
     int nBodies = NUM_PARTICLES;
     double dt = DT / NUM_STEPS;
+
+
+    size_t bytes = nBodies * sizeof(double);
+
+    // Round allocation size up to a multiple of 64.
+    size_t aligned_bytes = (bytes + 63) & ~((size_t)63);
+
+    body_x     = (double*)aligned_alloc(64, aligned_bytes);
+    body_y     = (double*)aligned_alloc(64, aligned_bytes);
+    masses     = (double*)aligned_alloc(64, aligned_bytes);
+    inv_masses = (double*)aligned_alloc(64, aligned_bytes);
+
 
     Body *p = (Body*)malloc(nBodies * sizeof(Body));
 
@@ -266,7 +337,7 @@ int main() {
 
         for (int steps = 0; steps < NUM_STEPS; steps++) {
 
-            calcForce2(p, dt, nBodies);
+            calcForce(p, dt, nBodies);
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < nBodies; i++) {
                 body_x[i] += (int)p[i].vx * dt;
@@ -353,4 +424,11 @@ int main() {
             stats = !stats;
         }
     }
+
+    free(body_x);
+    free(body_y);
+    free(masses);
+    free(inv_masses);
+
+
 }
